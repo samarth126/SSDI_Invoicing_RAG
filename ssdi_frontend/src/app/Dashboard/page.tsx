@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef  } from "react"
 import Image from "next/image"
 import { Calendar, ChevronLeft, Download, Search, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,8 @@ export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<{ username: string } | null>(null)
   const [error, setError] = useState<string>("")
-
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     // Check for user data in storage
     const userData = localStorage.getItem("user") || sessionStorage.getItem("user")
@@ -101,7 +102,44 @@ export default function DashboardPage() {
     console.log(`Downloading invoice ${invoiceNumber}`)
     // Implement actual download functionality here
   }
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedFile(event.target.files[0])
+    }
+  }
 
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      console.error("No file selected.")
+      return
+    }
+
+    const formData = new FormData()
+    formData.append("file", selectedFile)
+
+    try {
+      const response = await fetch("http://localhost:3000/api/upload/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Upload successful:", data)
+      } else {
+        const error = await response.json()
+        console.error("Upload failed:", error.message || "Unknown error")
+      }
+    } catch (error) {
+      console.error("Upload error:", error)
+    }
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -149,6 +187,11 @@ export default function DashboardPage() {
               Filter by date
             </Button>
             <Button size="sm">Export</Button>
+            <Button size="sm" onClick={handleUploadClick}>Choose File</Button>
+            <Button size="sm" onClick={handleUpload} disabled={!selectedFile}>Upload</Button>
+            {selectedFile && <span className="text-sm text-gray-600">{selectedFile.name}</span>}
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+          
           </div>
         </div>
 
